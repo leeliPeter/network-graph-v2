@@ -3,35 +3,12 @@
 import React, { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import dynamic from "next/dynamic";
+import { languageData, colorScheme } from "./data";
 
 // Dynamically import ForceGraph with no SSR
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 });
-
-// Language data array
-const languageData: [string, string][] = [
-  ["Proto Indo-European", "Balto-Slavic"],
-  ["Proto Indo-European", "Germanic"],
-  ["Proto Indo-European", "Celtic"],
-  ["Proto Indo-European", "Italic"],
-  ["Proto Indo-European", "Hellenic"],
-  // ... rest of your data
-];
-
-// Color scheme for different language families
-const colorScheme = {
-  "Proto Indo-European": "#FF6B6B", // Red
-  "Balto-Slavic": "#4ECDC4", // Teal
-  Germanic: "#45B7D1", // Blue
-  Celtic: "#96CEB4", // Green
-  Italic: "#FFEEAD", // Yellow
-  Hellenic: "#D4A5A5", // Pink
-  Anatolian: "#9B59B6", // Purple
-  "Indo-Iranian": "#E67E22", // Orange
-  Tocharian: "#2ECC71", // Emerald
-  default: "#95A5A6", // Gray (default)
-};
 
 // Convert data to the format expected by react-force-graph
 const graphData = {
@@ -89,7 +66,7 @@ function GraphComponent() {
 export default function Graph() {
   return (
     <Card className="w-full max-w-[1200px] mx-auto">
-      <CardContent className="p-6">
+      <CardContent className="p-0">
         <Suspense fallback={<div>Loading graph...</div>}>
           <GraphComponent />
         </Suspense>
