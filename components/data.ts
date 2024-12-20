@@ -28,19 +28,20 @@ export const languageData: [string, string][] = [
 ];
 
 export const colorScheme = {
-  "Proto Indo-European": "#FF6B6B", // Red
-  "Balto-Slavic": "#4ECDC4", // Teal
-  Germanic: "#45B7D1", // Blue
-  Celtic: "#96CEB4", // Green
-  Italic: "#FFEEAD", // Yellow
-  Hellenic: "#D4A5A5", // Pink
-  Anatolian: "#9B59B6", // Purple
-  "Indo-Iranian": "#E67E22", // Orange
-  Tocharian: "#2ECC71", // Emerald
-  default: "#95A5A6", // Gray (default)
+  company: "#FF9999", // Light Red
+  指標: "#90EE90", // Light Green
+  因素: "#87CEFA", // Light Blue
+  策略: "#FFE87C", // Light Yellow
+  default: "#D3D3D3", // Light Gray
 } as const;
 
-nodes: [
+export const nodes = [
+  {
+    id: "00",
+    name: "未來巢",
+    type: "company",
+  },
+
   {
     id: "A1",
     name: "營業收入",
@@ -317,4 +318,32 @@ nodes: [
     },
     type: "策略",
   },
+];
+
+type Link = {
+  source: string;
+  target: string;
+  value: number;
+};
+
+export const links: Link[] = [
+  ...nodes.map((node) => ({
+    source: "00",
+    target: node.id,
+    value: 1,
+  })),
+  ...nodes.slice(1).flatMap((node) =>
+    Array.from({ length: Math.floor(Math.random() * 3) })
+      .map(() => {
+        const targetNode = nodes[Math.floor(Math.random() * nodes.length)];
+        return targetNode.id !== node.id && targetNode.id !== "00"
+          ? {
+              source: node.id,
+              target: targetNode.id,
+              value: 1,
+            }
+          : undefined;
+      })
+      .filter((link): link is Link => link !== undefined)
+  ),
 ];
