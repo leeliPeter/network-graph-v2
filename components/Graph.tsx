@@ -3,7 +3,7 @@
 import React, { Suspense, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Maximize2, Minimize2, X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,21 @@ const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 });
 
-type NodeData = (typeof nodes)[0];
+interface GraphNode {
+  x?: number;
+  y?: number;
+  color?: string;
+  name: string;
+  id: string;
+  type: string;
+  properties?: {
+    部門?: string;
+    值?: string;
+    比較基準?: string;
+    表現評估?: string;
+    影響?: string[];
+  };
+}
 
 const graphData = {
   nodes: nodes.map((node) => ({
@@ -34,7 +48,7 @@ const graphData = {
   links: links,
 };
 
-function NodeDetails({ node }: { node: NodeData }) {
+function NodeDetails({ node }: { node: GraphNode }) {
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
@@ -77,7 +91,7 @@ function NodeDetails({ node }: { node: NodeData }) {
 }
 
 function GraphComponent() {
-  const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const toggleFullScreen = () => {
@@ -86,7 +100,7 @@ function GraphComponent() {
 
   return (
     <div className="">
-      <div className="flex flex-wrap gap-2 justify-center mb-6 p-4">
+      <div className="flex flex-wrap gap-2 justify-center mb-0 pt-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">部門</Button>
@@ -160,31 +174,37 @@ function GraphComponent() {
           width={isFullScreen ? window.innerWidth : 1100}
           height={isFullScreen ? window.innerHeight : 700}
           nodeRelSize={4}
+          maxZoom={10}
+          minZoom={4}
           linkWidth={1}
           enableNodeDrag={true}
           enableZoomInteraction={true}
           linkDirectionalParticles={2}
           linkDirectionalParticleSpeed={0.005}
-          onNodeClick={(node: any) => setSelectedNode(node)}
-          nodeCanvasObject={(node: any, ctx, globalScale) => {
-            if (typeof node.x !== "number" || typeof node.y !== "number")
+          onNodeClick={(node) => {
+            setSelectedNode(node as GraphNode);
+          }}
+          nodeCanvasObject={(node, ctx, globalScale) => {
+            const graphNode = node as GraphNode;
+            if (
+              typeof graphNode.x !== "number" ||
+              typeof graphNode.y !== "number"
+            )
               return;
 
-            const label = node.name;
+            const label = graphNode.name;
             const fontSize = 12 / globalScale;
             ctx.font = `${fontSize}px Sans-Serif`;
 
-            // Draw node circle
-            ctx.fillStyle = node.color;
+            ctx.fillStyle = graphNode.color || "#000";
             ctx.beginPath();
-            ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI, false);
+            ctx.arc(graphNode.x, graphNode.y, 4, 0, 2 * Math.PI, false);
             ctx.fill();
 
-            // Draw node label in the center
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#000";
-            ctx.fillText(label, node.x, node.y);
+            ctx.fillText(label, graphNode.x, graphNode.y);
           }}
         />
       </div>
@@ -203,7 +223,7 @@ function GraphComponent() {
 
 export default function Graph() {
   return (
-    <Card className="w-full max-w-[1200px] mx-auto">
+    <Card className="w-full max-w-[1100px] mx-auto ">
       <CardContent className="p-0">
         <Suspense fallback={<div>Loading graph...</div>}>
           <GraphComponent />
