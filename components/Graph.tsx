@@ -3,7 +3,7 @@
 import React, { Suspense, useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Maximize2, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import dynamic from "next/dynamic";
-import { nodes, links, colorScheme } from "./data";
+import { nodes, colorScheme } from "./data";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
