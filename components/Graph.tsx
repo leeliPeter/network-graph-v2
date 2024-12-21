@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useMemo } from "react";
+import React, { Suspense, useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Maximize2, X } from "lucide-react";
@@ -101,7 +101,21 @@ function GraphComponent({
   >;
 }) {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 1100, height: 700 });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
 
   const filteredData = useMemo(() => {
     let filteredNodes = nodes;
@@ -198,111 +212,124 @@ function GraphComponent({
   }, [filters]);
 
   const handleFilter = (key: string, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
+    setFilters((prev) => {
+      // If selecting 值 or 比較基準, remove the other one if it exists
+      if (key === "值" || key === "比較基準") {
+        const newFilters = { ...prev };
+        delete newFilters["值"];
+        delete newFilters["比較基準"];
+        return {
+          ...newFilters,
+          [key]: value,
+        };
+      }
+      // For other filters, just add normally
+      return {
+        ...prev,
+        [key]: value,
+      };
+    });
   };
 
   return (
     <div className="">
-      <div className="flex flex-wrap gap-2 justify-center mb-0 pt-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">值</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleFilter("值", ">300000")}>
-              {">"} $300,000
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleFilter("值", "<300000")}>
-              {"<"} $300,000
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">比較基準</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              onClick={() => handleFilter("比較基準", ">300000")}
-            >
-              {">"} $300,000
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleFilter("比較基準", "<300000")}
-            >
-              {"<"} $300,000
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">表現評估</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleFilter("表現評估", "良好")}>
-              良好
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleFilter("表現評估", "一般")}>
-              一般
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleFilter("表現評估", "需改善")}
-            >
-              需改善
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Button variant="destructive" onClick={() => setFilters({})}>
-          Clear Filters
-        </Button>
-      </div>
-
       <div className="">
-        {isFullScreen ? (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleFullScreen}
-            className="bg-white/50 backdrop-blur-sm absolute top-2 right-2 flex gap-2 z-[60]"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleFullScreen}
-            className="bg-white/50 backdrop-blur-sm absolute top-2 right-2 flex gap-2 z-[60]"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[60] flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-center bg-white/50 backdrop-blur-sm p-2 rounded-lg">
+            {Object.entries(filters).map(([key, value]) => (
+              <div
+                key={key}
+                className="bg-secondary text-sm px-2 py-1 rounded-md flex items-center gap-1"
+              >
+                {key}: {value}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-transparent"
+                  onClick={() => {
+                    const newFilters = { ...filters };
+                    delete newFilters[key as keyof typeof filters];
+                    setFilters(newFilters);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="fixed top-14 left-1/2 transform -translate-x-1/2 z-[60] flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-center bg-white/50 backdrop-blur-sm p-2 rounded-lg">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">值</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleFilter("值", ">300000")}>
+                  {">"} $300,000
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleFilter("值", "<300000")}>
+                  {"<"} $300,000
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">比較基準</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => handleFilter("比較基準", ">300000")}
+                >
+                  {">"} $300,000
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFilter("比較基準", "<300000")}
+                >
+                  {"<"} $300,000
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">表現評估</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => handleFilter("表現評估", "良好")}
+                >
+                  良好
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFilter("表現評估", "一般")}
+                >
+                  一般
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFilter("表現評估", "需改善")}
+                >
+                  需改善
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="destructive" onClick={() => setFilters({})}>
+              Clear Filters
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div
-        className={`transition-all duration-300 ${
-          isFullScreen
-            ? "fixed inset-0 z-50 bg-background"
-            : "relative w-full h-full"
-        }`}
-      >
+      <div className="fixed inset-0 z-50 bg-background">
         <ForceGraph2D
           graphData={filteredData}
           nodeLabel={(node) => node.name}
           nodeColor={(node) => node.color}
           linkColor="#999"
-          width={isFullScreen ? window.innerWidth : 1100}
-          height={isFullScreen ? window.innerHeight : 700}
+          width={dimensions.width}
+          height={dimensions.height}
           nodeRelSize={4}
           maxZoom={10}
           minZoom={4}
@@ -362,28 +389,6 @@ export default function Graph() {
   return (
     <Card className="w-full max-w-[1100px] min-h-[700px] mx-auto ">
       <CardContent className="p-0">
-        <div className="w-full flex flex-row items-center justify-center p-2 gap-2">
-          {Object.entries(filters).map(([key, value]) => (
-            <div
-              key={key}
-              className="bg-secondary text-sm px-2 py-1 rounded-md flex items-center gap-1"
-            >
-              {key}: {value}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-4 w-4 p-0 hover:bg-transparent"
-                onClick={() => {
-                  const newFilters = { ...filters };
-                  delete newFilters[key as keyof typeof filters];
-                  setFilters(newFilters);
-                }}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
         <Suspense fallback={<div>Loading graph...</div>}>
           <GraphComponent filters={filters} setFilters={setFilters} />
         </Suspense>
