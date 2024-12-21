@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Maximize2, X } from "lucide-react";
@@ -38,15 +38,6 @@ interface GraphNode {
     影響?: string[];
   };
 }
-
-const graphData = {
-  nodes: nodes.map((node) => ({
-    ...node,
-    color:
-      colorScheme[node.type as keyof typeof colorScheme] || colorScheme.default,
-  })),
-  links: links,
-};
 
 function NodeDetails({ node }: { node: GraphNode }) {
   return (
@@ -93,6 +84,104 @@ function NodeDetails({ node }: { node: GraphNode }) {
 function GraphComponent() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [filters, setFilters] = useState<{
+    部門?: string;
+    值?: string;
+    比較基準?: string;
+    表現評估?: string;
+  }>({});
+
+  const filteredData = useMemo(() => {
+    let filteredNodes = nodes;
+    let matchedNodes: string[] = [];
+
+    if (Object.keys(filters).length > 0) {
+      // Get nodes that match the filters
+      matchedNodes = nodes
+        .filter((node) => {
+          if (!node.properties) return false;
+          return Object.entries(filters).every(([key, value]) => {
+            if (!value) return true;
+            if (key === "值" || key === "比較基準") {
+              const numValue = parseInt(
+                node.properties[key]?.replace(/[^0-9]/g, "") || "0"
+              );
+              return value.startsWith(">")
+                ? numValue > 200000
+                : numValue < 200000;
+            }
+            return (
+              node.properties[key as keyof typeof node.properties] === value
+            );
+          });
+        })
+        .map((node) => node.id);
+
+      // Filter nodes to only include matched nodes and company node
+      filteredNodes = nodes.filter(
+        (node) => matchedNodes.includes(node.id) || node.id === "00"
+      );
+    }
+
+    // Create links based on filters
+    const filteredLinks = (() => {
+      // If no filters, connect all nodes to company
+      if (matchedNodes.length === 0) {
+        return nodes
+          .filter((node) => node.id !== "00")
+          .map((node) => ({
+            source: "00",
+            target: node.id,
+            value: 1,
+          }));
+      }
+
+      const matchedLinks: Array<{
+        source: string;
+        target: string;
+        value: number;
+      }> = [];
+
+      // Connect all matched nodes to each other
+      for (let i = 0; i < matchedNodes.length; i++) {
+        for (let j = i + 1; j < matchedNodes.length; j++) {
+          matchedLinks.push({
+            source: matchedNodes[i],
+            target: matchedNodes[j],
+            value: 1,
+          });
+        }
+      }
+
+      // Connect first matched node to company
+      if (matchedNodes.length > 0) {
+        matchedLinks.push({
+          source: "00",
+          target: matchedNodes[0],
+          value: 1,
+        });
+      }
+
+      return matchedLinks;
+    })();
+
+    return {
+      nodes: filteredNodes.map((node) => ({
+        ...node,
+        color:
+          colorScheme[node.type as keyof typeof colorScheme] ||
+          colorScheme.default,
+      })),
+      links: filteredLinks,
+    };
+  }, [filters]);
+
+  const handleFilter = (key: string, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -106,10 +195,18 @@ function GraphComponent() {
             <Button variant="outline">部門</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem>財務部</DropdownMenuItem>
-            <DropdownMenuItem>銷售部</DropdownMenuItem>
-            <DropdownMenuItem>供應鏈部</DropdownMenuItem>
-            <DropdownMenuItem>採購部</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("部門", "財務部")}>
+              財務部
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("部門", "銷售部")}>
+              銷售部
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("部門", "供應鏈部")}>
+              供應鏈部
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("部門", "採購部")}>
+              採購部
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -118,8 +215,30 @@ function GraphComponent() {
             <Button variant="outline">值</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem>{">"} $500,000</DropdownMenuItem>
-            <DropdownMenuItem>{"<"} $500,000</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("值", "> $200,000")}>
+              {">"} $200,000
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("值", "< $200,000")}>
+              {"<"} $200,000
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">比較基準</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              onClick={() => handleFilter("比較基準", "> $200,000")}
+            >
+              {">"} $200,000
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleFilter("比較基準", "< $200,000")}
+            >
+              {"<"} $200,000
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -128,13 +247,23 @@ function GraphComponent() {
             <Button variant="outline">表現評估</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem>良好</DropdownMenuItem>
-            <DropdownMenuItem>一般</DropdownMenuItem>
-            <DropdownMenuItem>需改善</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("表現評估", "良好")}>
+              良好
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilter("表現評估", "一般")}>
+              一般
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleFilter("表現評估", "需改善")}
+            >
+              需改善
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="destructive">Clear Filters</Button>
+        <Button variant="destructive" onClick={() => setFilters({})}>
+          Clear Filters
+        </Button>
       </div>
 
       <div className="">
@@ -167,7 +296,7 @@ function GraphComponent() {
         }`}
       >
         <ForceGraph2D
-          graphData={graphData}
+          graphData={filteredData}
           nodeLabel={(node) => node.name}
           nodeColor={(node) => node.color}
           linkColor="#999"
@@ -223,7 +352,7 @@ function GraphComponent() {
 
 export default function Graph() {
   return (
-    <Card className="w-full max-w-[1100px] mx-auto ">
+    <Card className="w-full max-w-[1100px] min-h-[700px] mx-auto ">
       <CardContent className="p-0">
         <Suspense fallback={<div>Loading graph...</div>}>
           <GraphComponent />
