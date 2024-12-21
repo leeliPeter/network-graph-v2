@@ -81,15 +81,27 @@ function NodeDetails({ node }: { node: GraphNode }) {
   );
 }
 
-function GraphComponent() {
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [filters, setFilters] = useState<{
+function GraphComponent({
+  filters,
+  setFilters,
+}: {
+  filters: {
     部門?: string;
     值?: string;
     比較基準?: string;
     表現評估?: string;
-  }>({});
+  };
+  setFilters: React.Dispatch<
+    React.SetStateAction<{
+      部門?: string;
+      值?: string;
+      比較基準?: string;
+      表現評估?: string;
+    }>
+  >;
+}) {
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const filteredData = useMemo(() => {
     let filteredNodes = nodes;
@@ -107,8 +119,8 @@ function GraphComponent() {
                 node.properties[key]?.replace(/[^0-9]/g, "") || "0"
               );
               return value.startsWith(">")
-                ? numValue > 200000
-                : numValue < 200000;
+                ? numValue > 300000
+                : numValue < 300000;
             }
             return (
               node.properties[key as keyof typeof node.properties] === value
@@ -117,10 +129,8 @@ function GraphComponent() {
         })
         .map((node) => node.id);
 
-      // Filter nodes to only include matched nodes and company node
-      filteredNodes = nodes.filter(
-        (node) => matchedNodes.includes(node.id) || node.id === "00"
-      );
+      // Keep all nodes visible
+      filteredNodes = nodes;
     }
 
     // Create links based on filters
@@ -136,16 +146,16 @@ function GraphComponent() {
           }));
       }
 
-      const matchedLinks: Array<{
+      const links: Array<{
         source: string;
         target: string;
         value: number;
       }> = [];
 
-      // Connect all matched nodes to each other
+      // Connect matched nodes to each other
       for (let i = 0; i < matchedNodes.length; i++) {
         for (let j = i + 1; j < matchedNodes.length; j++) {
-          matchedLinks.push({
+          links.push({
             source: matchedNodes[i],
             target: matchedNodes[j],
             value: 1,
@@ -153,16 +163,27 @@ function GraphComponent() {
         }
       }
 
-      // Connect first matched node to company
+      // Connect matched nodes to company
       if (matchedNodes.length > 0) {
-        matchedLinks.push({
+        links.push({
           source: "00",
           target: matchedNodes[0],
           value: 1,
         });
       }
 
-      return matchedLinks;
+      // Connect unmatched nodes only to company
+      nodes
+        .filter((node) => !matchedNodes.includes(node.id) && node.id !== "00")
+        .forEach((node) => {
+          links.push({
+            source: "00",
+            target: node.id,
+            value: 1,
+          });
+        });
+
+      return links;
     })();
 
     return {
@@ -192,34 +213,14 @@ function GraphComponent() {
       <div className="flex flex-wrap gap-2 justify-center mb-0 pt-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">部門</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleFilter("部門", "財務部")}>
-              財務部
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleFilter("部門", "銷售部")}>
-              銷售部
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleFilter("部門", "供應鏈部")}>
-              供應鏈部
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleFilter("部門", "採購部")}>
-              採購部
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
             <Button variant="outline">值</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleFilter("值", "> $200,000")}>
-              {">"} $200,000
+            <DropdownMenuItem onClick={() => handleFilter("值", ">300000")}>
+              {">"} $300,000
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleFilter("值", "< $200,000")}>
-              {"<"} $200,000
+            <DropdownMenuItem onClick={() => handleFilter("值", "<300000")}>
+              {"<"} $300,000
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -230,14 +231,14 @@ function GraphComponent() {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              onClick={() => handleFilter("比較基準", "> $200,000")}
+              onClick={() => handleFilter("比較基準", ">300000")}
             >
-              {">"} $200,000
+              {">"} $300,000
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handleFilter("比較基準", "< $200,000")}
+              onClick={() => handleFilter("比較基準", "<300000")}
             >
-              {"<"} $200,000
+              {"<"} $300,000
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -351,11 +352,40 @@ function GraphComponent() {
 }
 
 export default function Graph() {
+  const [filters, setFilters] = useState<{
+    部門?: string;
+    值?: string;
+    比較基準?: string;
+    表現評估?: string;
+  }>({});
+
   return (
     <Card className="w-full max-w-[1100px] min-h-[700px] mx-auto ">
       <CardContent className="p-0">
+        <div className="w-full flex flex-row items-center justify-center p-2 gap-2">
+          {Object.entries(filters).map(([key, value]) => (
+            <div
+              key={key}
+              className="bg-secondary text-sm px-2 py-1 rounded-md flex items-center gap-1"
+            >
+              {key}: {value}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 hover:bg-transparent"
+                onClick={() => {
+                  const newFilters = { ...filters };
+                  delete newFilters[key as keyof typeof filters];
+                  setFilters(newFilters);
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
         <Suspense fallback={<div>Loading graph...</div>}>
-          <GraphComponent />
+          <GraphComponent filters={filters} setFilters={setFilters} />
         </Suspense>
       </CardContent>
     </Card>
